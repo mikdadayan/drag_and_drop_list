@@ -1,7 +1,10 @@
 // Project Type
-enum  ProjectStatus{Active, Finished}
+enum ProjectStatus {
+  Active,
+  Finished,
+}
 
-type Listener = (items: Project[]) => void;
+type Listener<T> = (items: T[]) => void;
 
 class Project {
   constructor(
@@ -13,13 +16,21 @@ class Project {
   ) {}
 }
 
+class State<T> {
+  protected listeners: Listener<T>[] = [];
+  addListener(listenerFn: Listener<T>) {
+    this.listeners.push(listenerFn);
+  }
+}
+
 // Project State Managment
-class ProjectState {
+class ProjectState extends State<Project> {
   private projects: Project[] = [];
-  private listeners: Listener[] = [];
   private static instance: ProjectState;
 
-  private constructor() {}
+  private constructor() {
+    super();
+  }
 
   static getInstance() {
     if (this.instance) {
@@ -29,20 +40,17 @@ class ProjectState {
     return this.instance;
   }
 
-  addListener(listenerFn: Listener) {
-    this.listeners.push(listenerFn);
-  }
-
   addProject(title: string, description: string, numberOfPeople: number) {
-    const newProject = new Project (
+    const newProject = new Project(
       Math.random().toString(),
       title,
       description,
       numberOfPeople,
-      ProjectStatus.Active 
+      ProjectStatus.Active
     );
+    console.log(newProject);
     this.projects.push(newProject);
-    console.log(this.projects)
+    console.log(this.projects);
     for (let listenerFn of this.listeners) {
       listenerFn(this.projects.slice());
     }
@@ -100,89 +108,116 @@ function Autobind(_: any, _2: string, descriptor: PropertyDescriptor) {
   return adjDescriptor;
 }
 
-// ProjectList Class
+// Component Base Class
 
-class ProjectList {
+abstract class Component<T extends HTMLElement, U extends HTMLElement> {
   templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLElement;
-  assignedProjects: Project[] = [];
+  hostElement: T;
+  element: U;
 
-  constructor(private type: "active" | "finished") {
+  constructor(
+    templateId: string,
+    hostElementId: string,
+    instertAtStart: boolean,
+    newElementId?: string
+  ) {
     // we guaranteed to TS that, we fetch beyond will not be null(!) and will be this type(as HTMLTemplateElement[type casting])
     this.templateElement = document.getElementById(
-      "project-list"
+      templateId
     )! as HTMLTemplateElement;
-    this.hostElement = document.getElementById("app")! as HTMLDivElement;
-
+    this.hostElement = document.getElementById(hostElementId)! as T;
     const importedNode = document.importNode(
       this.templateElement.content,
       true
     );
-    this.element = importedNode.firstElementChild as HTMLElement;
-    this.element.id = `${this.type}-projects`;
+    this.element = importedNode.firstElementChild as U;
+    if (newElementId) {
+      this.element.id = newElementId;
+    }
+    this.attach(instertAtStart);
+  }
 
-    // Arrow syntax automatically binds to the surounding code's context under the hood.
-    // Basically in the Arrow function "this" always represents the object in which
-    // the arrow function is defined.
-    projectState.addListener((projects: Project[]) => {
-      const relevantProjects = projects.filter(prj=>{
-        if(this.type === "active" ){
-          return prj.status === ProjectStatus.Active
-        }
-        return prj.status = ProjectStatus.Finished;
-      })
-      this.assignedProjects = relevantProjects;
-      this.renderProjects();
-    });
+  private attach(insertAtBegining: boolean) {
+    this.hostElement.insertAdjacentElement(
+      insertAtBegining ? "afterbegin" : "beforeend",
+      this.element
+    );
+  }
 
-    this.attach();
+  abstract configure(): void;
+  abstract renderContent(): void;
+}
+
+//ProjectItem Class
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+  private project: Project;
+  constructor(hostId: string, project: Project) {
+    super("single-project", hostId, false, project.id);
+    this.project = project;
+    this.configure()
+    this.renderContent()
+  }
+
+  configure(){}
+
+  renderContent(){}
+}
+
+
+// ProjectList Class
+class ProjectList extends Component<HTMLDivElement, HTMLElement> {
+  assignedProjects: Project[] = [];
+
+  constructor(private type: "active" | "finished") {
+    super("project-list", "app", false, `${type}-projects`);
+
+    this.configure();
     this.renderContent();
   }
-  private renderContent() {
+  renderContent() {
     const listId = `${this.type}-projects-list`;
     this.element.querySelector("ul")!.id = listId;
     this.element.querySelector("h2")!.textContent =
       this.type.toUpperCase() + " PROJECTS";
   }
 
+  configure() {
+    // Arrow syntax automatically binds to the surounding code's context under the hood.
+    // Basically in the Arrow function "this" always represents the object in which
+    // the arrow function is defined.
+    projectState.addListener((projects: Project[]) => {
+      const relevantProjects = projects.filter((prj) => {
+        if (this.type === "active") {
+          // console.log("$$$$$$", prj.status)
+          return prj.status === ProjectStatus.Active;
+        }
+        return prj.status === ProjectStatus.Finished;
+      });
+      this.assignedProjects = relevantProjects;
+      this.renderProjects();
+    });
+  }
+
   private renderProjects() {
     const listEl = document.getElementById(
       `${this.type}-projects-list`
     )! as HTMLUListElement;
+    listEl.innerHTML = "";
     for (const prjItem of this.assignedProjects) {
       const listItem = document.createElement("li");
       listItem.textContent = prjItem.title;
       listEl.appendChild(listItem);
     }
   }
-
-  private attach() {
-    this.hostElement.insertAdjacentElement("beforeend", this.element);
-  }
 }
 
 // ProjectInput Class
-class ProjectInput {
-  templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLFormElement;
+class ProjectInput extends Component<HTMLDivElement, HTMLFormElement> {
   titleInputElement: HTMLInputElement;
   descriptionInputElement: HTMLInputElement;
   peopleInputElement: HTMLInputElement;
   constructor() {
-    // we guaranteed to TS that, we fetch beyond will not be null(!) and will be this type(as HTMLTemplateElement[type casting])
-    this.templateElement = document.getElementById(
-      "project-input"
-    )! as HTMLTemplateElement;
-    this.hostElement = document.getElementById("app")! as HTMLDivElement;
-
-    const importedNode = document.importNode(
-      this.templateElement.content,
-      true
-    );
-    this.element = importedNode.firstElementChild as HTMLFormElement;
-    this.element.id = "user-input";
+    super("project-input", "app", true, "user-input");
 
     this.titleInputElement = this.element.querySelector(
       "#title"
@@ -194,7 +229,6 @@ class ProjectInput {
       "#people"
     )! as HTMLInputElement;
     this.configure();
-    this.attach();
   }
 
   private gatherUserInputs(): [string, string, number] | void {
@@ -230,6 +264,11 @@ class ProjectInput {
       return [enteredTitle, enteredDescription, Number(enteredPeople)];
     }
   }
+  configure() {
+    this.element.addEventListener("submit", this.handleSubmit);
+  }
+
+  renderContent() {}
 
   @Autobind
   private handleSubmit(event: Event) {
@@ -240,15 +279,10 @@ class ProjectInput {
       const [title, description, people] = userInput;
       // console.log(title, description, people);
       projectState.addProject(title, description, people);
+      this.titleInputElement.value = "";
+      this.descriptionInputElement.value = "";
+      this.peopleInputElement.value = "";
     }
-  }
-
-  private configure() {
-    this.element.addEventListener("submit", this.handleSubmit);
-  }
-
-  private attach() {
-    this.hostElement.insertAdjacentElement("afterbegin", this.element);
   }
 }
 

@@ -1,3 +1,15 @@
+// Drag & Drop
+interface Draggable {
+  dragStartHandler(event: DragEvent): void;
+  dragEndHandler(event: DragEvent): void;
+}
+
+interface DragTarget {
+  dragOverHandler(event: DragEvent): void;
+  dropHandler(event: DragEvent): void;
+  dragLeaveHandler(event: DragEvent): void;
+}
+
 // Project Type
 enum ProjectStatus {
   Active,
@@ -50,7 +62,19 @@ class ProjectState extends State<Project> {
     );
     console.log(newProject);
     this.projects.push(newProject);
-    console.log(this.projects);
+    this.updateListeners();
+  }
+
+  // swith status of project(Active or Finished)
+  moveProject(projectId: string, newStatus: ProjectStatus) {
+    const project = this.projects.find((prj) => prj.id === projectId);
+    if (project && project.status !== newStatus) {
+      project.status = newStatus;
+      this.updateListeners();
+    }
+  }
+
+  private updateListeners() {
     for (let listenerFn of this.listeners) {
       listenerFn(this.projects.slice());
     }
@@ -149,14 +173,16 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
 }
 
 //ProjectItem Class
-class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+class ProjectItem
+  extends Component<HTMLUListElement, HTMLLIElement>
+  implements Draggable {
   private project: Project;
 
-  get persons(){
-    if(this.project.people === 1){
-      return "1 person"
+  get persons() {
+    if (this.project.people === 1) {
+      return "1 person";
     } else {
-      return `${this.project.people} persons`
+      return `${this.project.people} persons`;
     }
   }
 
@@ -167,21 +193,33 @@ class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
     this.renderContent();
   }
 
-  configure() {}
+  @Autobind
+  dragStartHandler(event: DragEvent) {
+    event.dataTransfer!.setData("text/plain", this.element.id);
+    event.dataTransfer!.effectAllowed = "move";
+  }
+
+  dragEndHandler(_: DragEvent) {
+    console.log("DragEnd event");
+  }
+
+  configure() {
+    this.element.addEventListener("dragstart", this.dragStartHandler);
+    this.element.addEventListener("dragend", this.dragEndHandler);
+  }
 
   renderContent() {
     this.element.querySelector("h2")!.textContent = this.project.title;
-    this.element.querySelector(
-      "h3"
-    )!.textContent = this.persons + " assigned";
+    this.element.querySelector("h3")!.textContent = this.persons + " assigned";
     this.element.querySelector("p")!.textContent = this.project.description;
   }
 }
 
 // ProjectList Class
-class ProjectList extends Component<HTMLDivElement, HTMLElement> {
+class ProjectList
+  extends Component<HTMLDivElement, HTMLElement>
+  implements DragTarget {
   assignedProjects: Project[] = [];
-
 
   constructor(private type: "active" | "finished") {
     super("project-list", "app", false, `${type}-projects`);
@@ -189,6 +227,29 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
     this.configure();
     this.renderContent();
   }
+
+  @Autobind
+  dragOverHandler(event: DragEvent) {
+    if (event.dataTransfer && event.dataTransfer.types[0] === "text/plain") {
+      event.preventDefault();
+      this.element.querySelector("ul")!.classList.add("droppable");
+    }
+  }
+
+  @Autobind
+  dropHandler(event: DragEvent) {
+    const prjId = event.dataTransfer!.getData("text/plain");
+    projectState.moveProject(
+      prjId,
+      this.type === "active" ? ProjectStatus.Active : ProjectStatus.Finished
+    );
+  }
+
+  @Autobind
+  dragLeaveHandler(_: DragEvent) {
+    this.element.querySelector("ul")!.classList.remove("droppable");
+  }
+
   renderContent() {
     const listId = `${this.type}-projects-list`;
     this.element.querySelector("ul")!.id = listId;
@@ -197,6 +258,9 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
   }
 
   configure() {
+    this.element.addEventListener("dragover", this.dragOverHandler);
+    this.element.addEventListener("drop", this.dropHandler);
+    this.element.addEventListener("dragleave", this.dragLeaveHandler);
     // Arrow syntax automatically binds to the surounding code's context under the hood.
     // Basically in the Arrow function "this" always represents the object in which
     // the arrow function is defined.
@@ -219,10 +283,7 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
     )! as HTMLUListElement;
     listEl.innerHTML = "";
     for (const prjItem of this.assignedProjects) {
-      new ProjectItem(
-        this.element.querySelector("ul")!.id,
-        prjItem
-      );
+      new ProjectItem(this.element.querySelector("ul")!.id, prjItem);
     }
   }
 }

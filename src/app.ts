@@ -63,7 +63,6 @@ class ProjectState extends State<Project> {
       numberOfPeople,
       ProjectStatus.Active
     );
-    console.log(newProject);
     this.projects.push(newProject);
     this.updateListeners();
   }

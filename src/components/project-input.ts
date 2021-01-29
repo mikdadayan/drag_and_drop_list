@@ -65,7 +65,6 @@ export class ProjectInput extends Component<HTMLDivElement, HTMLFormElement> {
   @Autobind
   private handleSubmit(event: Event) {
     event.preventDefault();
-    console.log("Hello!");
     const userInput = this.gatherUserInputs();
     if (Array.isArray(userInput)) {
       const [title, description, people] = userInput;

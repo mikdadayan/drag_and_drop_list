@@ -59,7 +59,6 @@ export class ProjectList
     projectState.addListener((projects: Project[]) => {
       const relevantProjects = projects.filter((prj) => {
         if (this.type === "active") {
-          // console.log("$$$$$$", prj.status)
           return prj.status === ProjectStatus.Active;
         }
         return prj.status === ProjectStatus.Finished;

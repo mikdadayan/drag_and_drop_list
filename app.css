@@ -26,7 +26,7 @@ textarea {
   font: inherit;
   padding: 0.2rem 0.4rem;
   width: 100%;
-  max-width: 30rem;
+  max-width: rem;
   border: 1px solid #ccc;
 }
 
@@ -38,8 +38,8 @@ textarea:focus {
 
 button {
   font: inherit;
-  background: #ff0062;
-  border: 1px solid #ff0062;
+  background: #808080;
+  border: 1px solid #808080;
   cursor: pointer;
   color: white;
   padding: 0.75rem 1rem;
@@ -51,17 +51,17 @@ button:focus {
 
 button:hover,
 button:active {
-  background: #a80041;
-  border-color: #a80041;
+  background: #a9a9a9;
+  border-color: #a9a9a9;
 }
 
 .projects {
   margin: 1rem;
-  border: 1px solid #ff0062;
+  border: 1px solid #808080;
 }
 
 .projects header {
-  background: #ff0062;
+  background: #808080;
   height: 3.5rem;
   display: flex;
   justify-content: center;
@@ -69,11 +69,11 @@ button:active {
 }
 
 #finished-projects {
-  border-color: #0044ff;
+  border-color: #1a5653;
 }
 
 #finished-projects header {
-  background: #0044ff;
+  background: #1a5653;
 }
 
 .projects h2 {
@@ -121,8 +121,12 @@ button:active {
 }
 
 #user-input {
-  margin: 1rem;
+  margin: auto;
+  justify-content: center;
+  align-items: center;
+  width: 50%;
+  /* margin: 1rem; */
   padding: 1rem;
-  border: 1px solid #ff0062;
+  border: 1px solid #a9a9a9;
   background: #f7f7f7;
 }
